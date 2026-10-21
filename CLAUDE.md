@@ -14,7 +14,6 @@ npm run build            # nest build -> dist/ (apaga dist antes)
 npm run lint             # oxlint src/ test/  (não é ESLint)
 npm run format           # prettier (singleQuote, trailingComma: all)
 
-docker compose up -d                  # PostgreSQL local (db na porta 5432, db-test na 5433)
 npx prisma generate                   # regenera o client em src/generated/prisma
 npx prisma migrate dev --name <nome>  # cria/aplica migration em prisma/migrations
 npm run seed                          # recria usuários e tickets do seed (apaga os dados antes)

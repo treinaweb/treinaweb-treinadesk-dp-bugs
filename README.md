@@ -9,12 +9,11 @@ As regras de negócio que os testes verificam estão em [`docs/regras-de-negocio
 Pré-requisitos:
 
 - **Node.js 24.9 ou superior** (há um `.nvmrc`: `nvm use`).
-- **Docker** (para o PostgreSQL) ou um PostgreSQL já instalado.
+- **PostgreSQL** instalado e rodando. O `prisma migrate deploy` cria os bancos `treinadesk` e `treinadesk_test` se eles não existirem.
 
 ```bash
 npm install
-cp .env.example .env          # com Docker, os valores padrão já funcionam
-docker compose up -d          # sobe db (5432) e db-test (5433)
+cp .env.example .env          # ajuste usuário e senha do seu PostgreSQL
 npx prisma generate           # gera o client do Prisma em src/generated/prisma
 npx prisma migrate deploy     # cria as tabelas
 npx prisma db seed            # usuários e tickets do curso (apaga os dados antes)
@@ -24,7 +23,7 @@ npm run start:dev             # API em http://localhost:3000
 - Documentação interativa (Swagger): http://localhost:3000/docs
 - Contrato OpenAPI em JSON: http://localhost:3000/docs-json
 
-Sem Docker: aponte o `DATABASE_URL` do `.env` para o seu PostgreSQL e crie um `.env.test.local` com o `DATABASE_URL` do banco de testes (ele sobrescreve o `.env.test`).
+Os testes de integração usam o banco do `.env.test` (`treinadesk_test`, usuário e senha `postgres`). Se o seu PostgreSQL usa outras credenciais ou outra porta, crie um `.env.test.local` só com o `DATABASE_URL` certo: ele sobrescreve o `.env.test` e não vai para o git.
 
 ## Usuários do seed
 
