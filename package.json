@@ -18,7 +18,7 @@
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
+    "test:e2e": "dotenv -e .env.test -c -- prisma migrate deploy && dotenv -e .env.test -c -- node --experimental-vm-modules node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --runInBand",
     "seed": "prisma db seed"
   },
   "dependencies": {
@@ -47,6 +47,7 @@
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.0.0",
+    "dotenv-cli": "^11.0.0",
     "jest": "^30.0.0",
     "oxlint": "^1.58.0",
     "prettier": "^3.4.2",

@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: treinadesk
+    ports:
+      - '5432:5432'
+    volumes:
+      - db-data:/var/lib/postgresql
+
+  # Banco dos testes de integração: recriado por npm run test:e2e, sem volume.
+  db-test:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: treinadesk_test
+    ports:
+      - '5433:5432'
+    tmpfs:
+      - /var/lib/postgresql
+
+volumes:
+  db-data:
