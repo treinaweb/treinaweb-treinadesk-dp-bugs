@@ -55,6 +55,7 @@ const ALL_OPERATIONS = [
   'POST /tickets',
   'GET /tickets',
   'GET /tickets/{id}',
+  'PATCH /tickets/{id}',
   'PATCH /tickets/{id}/assign',
   'PATCH /tickets/{id}/status',
   'POST /tickets/{ticketId}/comments',
@@ -253,9 +254,9 @@ describe('API docs (e2e)', () => {
     it('descreve a listagem paginada de tickets', () => {
       const page = responseSchema('GET /tickets', '200');
       expect(Object.keys(page.properties!)).toEqual(
-        expect.arrayContaining(['data', 'page', 'limit', 'total']),
+        expect.arrayContaining(['items', 'page', 'limit']),
       );
-      expect(page.properties!.data.type).toBe('array');
+      expect(page.properties!.items.type).toBe('array');
       const params = (operation('GET /tickets').parameters ?? []).map((p) => p.name);
       expect(params).toEqual(
         expect.arrayContaining(['page', 'limit', 'status', 'priority']),
