@@ -23,23 +23,23 @@ import {
 import type { AuthenticatedUser } from '../auth/authenticated-user.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { Roles } from '../auth/roles.decorator.js';
-import { Paginated } from '../common/dto/paginated.js';
 import { Role } from '../generated/prisma/client.js';
 import { ApiAuth } from '../openapi/api-auth.decorator.js';
 import { ErrorResponse } from '../openapi/responses/error.response.js';
-import { PaginatedTicketsResponse } from '../openapi/responses/paginated.response.js';
+import { TicketPageResponse } from '../openapi/responses/paginated.response.js';
 import { TicketResponse } from '../openapi/responses/ticket.response.js';
 import { AssignTicketDto } from './dto/assign-ticket.dto.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { ListTicketsQueryDto } from './dto/list-tickets-query.dto.js';
 import { UpdateStatusDto } from './dto/update-status.dto.js';
-import { TicketView } from './ticket-select.js';
+import { UpdateTicketDto } from './dto/update-ticket.dto.js';
+import { TicketPage, TicketView } from './ticket-select.js';
 import { TicketsService } from './tickets.service.js';
 
-// Autorização em duas camadas: @Roles por rota (403) e visibilidade por
-// registro no service (404).
+// Autorização em duas camadas: @Roles por rota (403) e acesso ao registro no
+// service (404).
 const NOT_VISIBLE =
-  'Ticket inexistente ou fora da sua visibilidade (mesma resposta nos dois casos).';
+  'Ticket inexistente ou de outro cliente (mesma resposta nos dois casos).';
 const CONCURRENT =
   'O ticket foi alterado por outra requisição; recarregue e tente de novo.';
 
@@ -75,10 +75,10 @@ export class TicketsController {
   @ApiAuth({
     summary: 'Lista tickets visíveis (paginada)',
     description:
-      'CUSTOMER vê os próprios; SUPPORT vê a fila (OPEN sem atendente) e os ' +
-      'atribuídos a ele; ADMIN vê todos. Mais recentes primeiro.',
+      'CUSTOMER vê os próprios; SUPPORT e ADMIN veem todos. Mais recentes ' +
+      'primeiro; limit padrão 10, reduzido para 50 se maior.',
   })
-  @ApiOkResponse({ type: PaginatedTicketsResponse })
+  @ApiOkResponse({ type: TicketPageResponse })
   @ApiBadRequestResponse({
     type: ErrorResponse,
     description: 'Filtros inválidos.',
@@ -87,7 +87,7 @@ export class TicketsController {
   findAll(
     @Query() query: ListTicketsQueryDto,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<Paginated<TicketView>> {
+  ): Promise<TicketPage> {
     return this.ticketsService.findAll(query, user);
   }
 
@@ -101,14 +101,39 @@ export class TicketsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<TicketView> {
-    return this.ticketsService.findVisibleOrFail(id, user);
+    return this.ticketsService.findOne(id, user);
+  }
+
+  @ApiAuth({
+    summary: 'Altera título, descrição ou prioridade',
+    description: 'Ticket CLOSED não aceita alteração.',
+  })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: TicketResponse })
+  @ApiBadRequestResponse({
+    type: ErrorResponse,
+    description: 'id ou corpo inválido.',
+  })
+  @ApiNotFoundResponse({ type: ErrorResponse, description: NOT_VISIBLE })
+  @ApiUnprocessableEntityResponse({
+    type: ErrorResponse,
+    description: 'Ticket fechado.',
+  })
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTicketDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<TicketView> {
+    return this.ticketsService.update(id, dto, user);
   }
 
   @Roles(Role.SUPPORT, Role.ADMIN)
   @ApiAuth({
     summary: 'Atribui ticket a um atendente',
     description:
-      'SUPPORT assume um ticket da fila para si (sem corpo). ADMIN informa ' +
+      'SUPPORT assume para si um ticket da fila, OPEN sem atendente (sem ' +
+      'corpo). ADMIN informa ' +
       'assigneeId (um SUPPORT) e pode reatribuir tickets OPEN, IN_PROGRESS ' +
       'ou WAITING_CUSTOMER. Ticket OPEN passa a IN_PROGRESS.',
     roles: [Role.SUPPORT, Role.ADMIN],

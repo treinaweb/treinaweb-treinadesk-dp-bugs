@@ -15,7 +15,7 @@ import { CommentsService } from './comments.service.js';
 describe('CommentsService', () => {
   let service: CommentsService;
 
-  const tickets = { findVisibleOrFail: jest.fn() };
+  const tickets = { findOne: jest.fn() };
   const tx = {
     comment: { create: jest.fn() },
     ticket: { updateMany: jest.fn() },
@@ -52,7 +52,7 @@ describe('CommentsService', () => {
     role: Role.ADMIN,
   };
 
-  // Ticket T do cliente A, no formato devolvido por findVisibleOrFail.
+  // Ticket T do cliente A, no formato devolvido por findOne.
   const ticket = (
     status: TicketStatus,
     assignee: AuthenticatedUser | null,
@@ -109,10 +109,8 @@ describe('CommentsService', () => {
   };
 
   describe('create', () => {
-    it('consulta a visibilidade do ticket antes de gravar', async () => {
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.IN_PROGRESS, s1),
-      );
+    it('consulta o acesso ao ticket antes de gravar', async () => {
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.IN_PROGRESS, s1));
       tx.comment.create.mockResolvedValue(comment('Segue o comprovante'));
 
       await service.create(
@@ -121,20 +119,17 @@ describe('CommentsService', () => {
         customerA,
       );
 
-      expect(tickets.findVisibleOrFail).toHaveBeenCalledWith(
-        ticketId,
-        customerA,
+      expect(tickets.findOne).toHaveBeenCalledWith(ticketId, customerA);
+      expect(tickets.findOne.mock.invocationCallOrder[0]).toBeLessThan(
+        prisma.$transaction.mock.invocationCallOrder[0],
       );
-      expect(
-        tickets.findVisibleOrFail.mock.invocationCallOrder[0],
-      ).toBeLessThan(prisma.$transaction.mock.invocationCallOrder[0]);
     });
 
     it.each([
       ['cliente B no ticket de A', customerB],
       ['atendente S2 no ticket de S1', s2],
     ])('%s → 404 sem criar comentário', async (_, user) => {
-      tickets.findVisibleOrFail.mockRejectedValue(notFound);
+      tickets.findOne.mockRejectedValue(notFound);
 
       await expect(
         service.create(ticketId, { body: 'Segue o comprovante' }, user),
@@ -143,9 +138,7 @@ describe('CommentsService', () => {
     });
 
     it('cliente com isInternal true → 403 sem criar comentário', async () => {
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.IN_PROGRESS, s1),
-      );
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.IN_PROGRESS, s1));
 
       await expect(
         service.create(
@@ -158,9 +151,7 @@ describe('CommentsService', () => {
     });
 
     it('atendente em ticket da fila (não atribuído) → 422 sem criar', async () => {
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.OPEN, null),
-      );
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.OPEN, null));
 
       await expect(
         service.create(ticketId, { body: 'Estamos verificando' }, s1),
@@ -174,9 +165,7 @@ describe('CommentsService', () => {
       ['ADMIN', admin, false],
       ['ADMIN com nota interna', admin, true],
     ])('ticket CLOSED: %s → 422 sem criar', async (_, user, isInternal) => {
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.CLOSED, s1),
-      );
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.CLOSED, s1));
 
       await expect(
         service.create(
@@ -190,9 +179,7 @@ describe('CommentsService', () => {
 
     it('grava com o autor do token e isInternal false por padrão', async () => {
       const created = comment('Segue o comprovante');
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.IN_PROGRESS, s1),
-      );
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.IN_PROGRESS, s1));
       tx.comment.create.mockResolvedValue(created);
 
       await expect(
@@ -214,9 +201,7 @@ describe('CommentsService', () => {
       ['ADMIN', admin],
     ])('%s grava nota interna', async (_, user) => {
       const created = comment('Cliente já pediu estorno antes', true);
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.IN_PROGRESS, s1),
-      );
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.IN_PROGRESS, s1));
       tx.comment.create.mockResolvedValue(created);
 
       await expect(
@@ -241,7 +226,7 @@ describe('CommentsService', () => {
   describe('create — retomada de WAITING_CUSTOMER', () => {
     it('comentário do cliente dono muda o ticket para IN_PROGRESS', async () => {
       const created = comment('Segue o comprovante');
-      tickets.findVisibleOrFail.mockResolvedValue(
+      tickets.findOne.mockResolvedValue(
         ticket(TicketStatus.WAITING_CUSTOMER, s1),
       );
       tx.comment.create.mockResolvedValue(created);
@@ -263,7 +248,7 @@ describe('CommentsService', () => {
       ['ADMIN', admin, false],
       ['ADMIN com nota interna', admin, true],
     ])('%s não muda o status', async (_, user, isInternal) => {
-      tickets.findVisibleOrFail.mockResolvedValue(
+      tickets.findOne.mockResolvedValue(
         ticket(TicketStatus.WAITING_CUSTOMER, s1),
       );
       tx.comment.create.mockResolvedValue(comment('Estamos verificando'));
@@ -282,7 +267,7 @@ describe('CommentsService', () => {
       TicketStatus.IN_PROGRESS,
       TicketStatus.RESOLVED,
     ])('cliente dono em ticket %s não muda o status', async (status) => {
-      tickets.findVisibleOrFail.mockResolvedValue(ticket(status, s1));
+      tickets.findOne.mockResolvedValue(ticket(status, s1));
       tx.comment.create.mockResolvedValue(comment('Segue o comprovante'));
 
       await service.create(
@@ -294,7 +279,7 @@ describe('CommentsService', () => {
     });
 
     it('status alterado antes da gravação → 409 (transação rejeitada)', async () => {
-      tickets.findVisibleOrFail.mockResolvedValue(
+      tickets.findOne.mockResolvedValue(
         ticket(TicketStatus.WAITING_CUSTOMER, s1),
       );
       tx.comment.create.mockResolvedValue(comment('Segue o comprovante'));
@@ -324,27 +309,22 @@ describe('CommentsService', () => {
       prisma.comment.count.mockResolvedValue(2);
     });
 
-    it('consulta a visibilidade do ticket antes dos comentários', async () => {
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.IN_PROGRESS, s1),
-      );
+    it('consulta o acesso ao ticket antes dos comentários', async () => {
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.IN_PROGRESS, s1));
 
       await service.list(ticketId, { page: 1, limit: 20 }, customerA);
 
-      expect(tickets.findVisibleOrFail).toHaveBeenCalledWith(
-        ticketId,
-        customerA,
+      expect(tickets.findOne).toHaveBeenCalledWith(ticketId, customerA);
+      expect(tickets.findOne.mock.invocationCallOrder[0]).toBeLessThan(
+        prisma.comment.findMany.mock.invocationCallOrder[0],
       );
-      expect(
-        tickets.findVisibleOrFail.mock.invocationCallOrder[0],
-      ).toBeLessThan(prisma.comment.findMany.mock.invocationCallOrder[0]);
     });
 
     it.each([
       ['cliente B no ticket de A', customerB],
       ['atendente S2 no ticket de S1', s2],
     ])('%s → 404 sem consultar comentários', async (_, user) => {
-      tickets.findVisibleOrFail.mockRejectedValue(notFound);
+      tickets.findOne.mockRejectedValue(notFound);
 
       await expect(
         service.list(ticketId, { page: 1, limit: 20 }, user),
@@ -355,9 +335,7 @@ describe('CommentsService', () => {
     });
 
     it('cliente: filtra notas internas no where de findMany e count', async () => {
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.IN_PROGRESS, s1),
-      );
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.IN_PROGRESS, s1));
 
       const result = await service.list(
         ticketId,
@@ -381,9 +359,7 @@ describe('CommentsService', () => {
       ['atendente atribuído', s1],
       ['ADMIN', admin],
     ])('%s: sem filtro de isInternal', async (_, user) => {
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.IN_PROGRESS, s1),
-      );
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.IN_PROGRESS, s1));
       prisma.comment.count.mockResolvedValue(3);
 
       const result = await service.list(ticketId, { page: 2, limit: 2 }, user);
@@ -401,9 +377,7 @@ describe('CommentsService', () => {
     });
 
     it('usa uma transação em lote com findMany e count', async () => {
-      tickets.findVisibleOrFail.mockResolvedValue(
-        ticket(TicketStatus.IN_PROGRESS, s1),
-      );
+      tickets.findOne.mockResolvedValue(ticket(TicketStatus.IN_PROGRESS, s1));
 
       await service.list(ticketId, { page: 1, limit: 20 }, admin);
 

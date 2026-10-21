@@ -6,16 +6,18 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import type { AuthenticatedUser } from '../auth/authenticated-user.js';
-import { Paginated } from '../common/dto/paginated.js';
 import { Prisma, Role, TicketStatus } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AssignTicketDto } from './dto/assign-ticket.dto.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { ListTicketsQueryDto } from './dto/list-tickets-query.dto.js';
 import { UpdateStatusDto } from './dto/update-status.dto.js';
+import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 import { ticketSelect, TicketView } from './ticket-select.js';
 import { canTransition } from './ticket-transitions.js';
-import { visibilityWhere } from './ticket-visibility.js';
+
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
 
 const ASSIGNABLE_STATUSES: TicketStatus[] = [
   TicketStatus.OPEN,
@@ -48,44 +50,58 @@ export class TicketsService {
     });
   }
 
-  async findAll(
-    query: ListTicketsQueryDto,
-    user: AuthenticatedUser,
-  ): Promise<Paginated<TicketView>> {
-    const { page, limit, status, priority } = query;
-    // AND explícito: um filtro nunca sobrescreve a regra de visibilidade.
+  async findAll(query: ListTicketsQueryDto, user: AuthenticatedUser) {
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
     const where: Prisma.TicketWhereInput = {
-      AND: [visibilityWhere(user), { status, priority }],
+      status: query.status,
+      priority: query.priority,
     };
+    if (user.role === Role.CUSTOMER) {
+      where.customerId = user.id;
+    }
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.ticket.findMany({
-        where,
-        select: ticketSelect,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.ticket.count({ where }),
-    ]);
-
-    return { data, page, limit, total };
+    const items = await this.prisma.ticket.findMany({
+      where,
+      select: ticketSelect,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { items, page, limit };
   }
 
-  // Inexistente e invisível respondem igual (404, nunca 403). Toda rota com
-  // :id passa por aqui antes de qualquer regra ou escrita.
-  async findVisibleOrFail(
-    id: string,
-    user: AuthenticatedUser,
-  ): Promise<TicketView> {
-    const ticket = await this.prisma.ticket.findFirst({
-      where: { AND: [{ id }, visibilityWhere(user)] },
+  // Toda rota com :id passa por aqui antes de qualquer regra ou escrita.
+  async findOne(id: string, user: AuthenticatedUser): Promise<TicketView> {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
       select: ticketSelect,
     });
     if (!ticket) {
       throw new NotFoundException('Ticket não encontrado');
     }
+    if (user.role === Role.CUSTOMER && ticket.customer.id !== user.id) {
+      throw new NotFoundException('Ticket não encontrado');
+    }
     return ticket;
+  }
+
+  async update(
+    id: string,
+    dto: UpdateTicketDto,
+    user: AuthenticatedUser,
+  ): Promise<TicketView> {
+    const ticket = await this.findOne(id, user);
+    if (ticket.status === TicketStatus.CLOSED) {
+      throw new UnprocessableEntityException(
+        'Ticket fechado não pode ser alterado',
+      );
+    }
+    return this.prisma.ticket.update({
+      where: { id },
+      data: dto,
+      select: ticketSelect,
+    });
   }
 
   async assign(
@@ -102,13 +118,17 @@ export class TicketsService {
       throw new BadRequestException('assigneeId é obrigatório');
     }
 
-    const ticket = await this.findVisibleOrFail(id, user);
+    const ticket = await this.findOne(id, user);
 
     if (user.role === Role.SUPPORT) {
-      // Visível para o SUPPORT = da fila ou já dele.
       if (ticket.assignee?.id === user.id) {
         throw new UnprocessableEntityException(
           'O ticket já está atribuído a você',
+        );
+      }
+      if (ticket.status !== TicketStatus.OPEN || ticket.assignee !== null) {
+        throw new UnprocessableEntityException(
+          'Só é possível assumir tickets da fila (OPEN sem atendente)',
         );
       }
       return this.writeIfUnchanged(
@@ -122,11 +142,11 @@ export class TicketsService {
         'O status do ticket não permite atribuição',
       );
     }
-    const assignee = await this.prisma.user.findFirst({
-      where: { id: dto.assigneeId, role: Role.SUPPORT },
-      select: { id: true },
+    const assignee = await this.prisma.user.findUnique({
+      where: { id: dto.assigneeId },
+      select: { id: true, role: true },
     });
-    if (!assignee) {
+    if (!assignee || assignee.role !== Role.SUPPORT) {
       throw new UnprocessableEntityException(
         'O destinatário deve ser um atendente (SUPPORT)',
       );
@@ -149,7 +169,7 @@ export class TicketsService {
     dto: UpdateStatusDto,
     user: AuthenticatedUser,
   ): Promise<TicketView> {
-    const ticket = await this.findVisibleOrFail(id, user);
+    const ticket = await this.findOne(id, user);
 
     const allowed = canTransition({
       from: ticket.status,

@@ -26,9 +26,8 @@ export class CommentsService {
     dto: CreateCommentDto,
     user: AuthenticatedUser,
   ): Promise<CommentView> {
-    // Primeiro a visibilidade: ticket invisível responde 404 antes de qualquer
-    // regra de comentário.
-    const ticket = await this.ticketsService.findVisibleOrFail(ticketId, user);
+    // Primeiro o acesso ao ticket: 404 antes de qualquer regra de comentário.
+    const ticket = await this.ticketsService.findOne(ticketId, user);
     const isOwner = ticket.customer.id === user.id;
     const isInternal = dto.isInternal ?? false;
 
@@ -86,7 +85,7 @@ export class CommentsService {
     query: PaginationQueryDto,
     user: AuthenticatedUser,
   ): Promise<Paginated<CommentView>> {
-    await this.ticketsService.findVisibleOrFail(ticketId, user);
+    await this.ticketsService.findOne(ticketId, user);
 
     const { page, limit } = query;
     // Notas internas filtradas na consulta: nunca saem do banco para o

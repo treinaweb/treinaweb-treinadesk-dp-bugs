@@ -5,7 +5,7 @@ import { TicketsService } from './tickets.service.js';
 @Module({
   controllers: [TicketsController],
   providers: [TicketsService],
-  // Comentários reutilizam findVisibleOrFail em vez de duplicar a visibilidade.
+  // Comentários reutilizam findOne em vez de duplicar a checagem de acesso.
   exports: [TicketsService],
 })
 export class TicketsModule {}

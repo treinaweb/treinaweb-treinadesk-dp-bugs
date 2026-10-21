@@ -24,3 +24,9 @@ export const ticketSelect = {
 export type TicketView = Prisma.TicketGetPayload<{
   select: typeof ticketSelect;
 }>;
+
+export interface TicketPage {
+  items: TicketView[];
+  page: number;
+  limit: number;
+}

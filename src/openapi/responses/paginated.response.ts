@@ -20,18 +20,16 @@ export class PaginatedUsersResponse {
   total: number;
 }
 
-export class PaginatedTicketsResponse {
+// Espelha TicketPage (src/tickets/ticket-select.ts).
+export class TicketPageResponse {
   @ApiProperty({ type: [TicketResponse] })
-  data: TicketResponse[];
+  items: TicketResponse[];
 
   @ApiProperty({ example: 1 })
   page: number;
 
-  @ApiProperty({ example: 20 })
+  @ApiProperty({ example: 10 })
   limit: number;
-
-  @ApiProperty({ example: 6, description: 'Total de tickets visíveis.' })
-  total: number;
 }
 
 export class PaginatedCommentsResponse {
