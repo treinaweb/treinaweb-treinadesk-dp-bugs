@@ -6,7 +6,7 @@ import { ROLES_KEY } from './roles.decorator.js';
 import { RolesGuard } from './roles.guard.js';
 
 describe('RolesGuard', () => {
-  const reflector = { getAllAndOverride: jest.fn() };
+  const reflector = { getAllAndOverride: vi.fn() };
   let guard: RolesGuard;
 
   function contextWith(user?: { role: Role }) {
@@ -24,7 +24,7 @@ describe('RolesGuard', () => {
   }
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     guard = new RolesGuard(reflector as unknown as Reflector);
   });
 

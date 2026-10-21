@@ -10,11 +10,11 @@ import { hashRefreshToken } from './refresh-token.js';
 describe('AuthService', () => {
   let service: AuthService;
   const prisma = {
-    user: { findUnique: jest.fn() },
-    refreshToken: { create: jest.fn() },
+    user: { findUnique: vi.fn() },
+    refreshToken: { create: vi.fn() },
   };
-  const passwordHasher = { hash: jest.fn(), verify: jest.fn() };
-  const jwtService = { signAsync: jest.fn() };
+  const passwordHasher = { hash: vi.fn(), verify: vi.fn() };
+  const jwtService = { signAsync: vi.fn() };
 
   const user = {
     id: 'b3f1c7de-0000-4000-8000-000000000000',
@@ -24,7 +24,7 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     passwordHasher.hash.mockResolvedValue('$argon2id$hash-de-referencia');
     jwtService.signAsync.mockResolvedValue('access.token.jwt');
     prisma.refreshToken.create.mockResolvedValue({});

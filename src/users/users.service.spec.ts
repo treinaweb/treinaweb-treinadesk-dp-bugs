@@ -13,13 +13,13 @@ describe('UsersService', () => {
   let service: UsersService;
   const prisma = {
     user: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      count: jest.fn(),
-      update: jest.fn(),
+      create: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
+      update: vi.fn(),
     },
-    refreshToken: { updateMany: jest.fn() },
-    $transaction: jest.fn(),
+    refreshToken: { updateMany: vi.fn() },
+    $transaction: vi.fn(),
   };
 
   const knownError = (code: string) =>
@@ -27,7 +27,7 @@ describe('UsersService', () => {
       code,
       clientVersion: Prisma.prismaVersion.client,
     });
-  const passwordHasher = { hash: jest.fn() };
+  const passwordHasher = { hash: vi.fn() };
 
   const dto = {
     name: 'Ana',
@@ -36,7 +36,7 @@ describe('UsersService', () => {
   };
 
   beforeEach(async () => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     passwordHasher.hash.mockResolvedValue('$argon2id$hash-falso');
     // Array: resolve as consultas em sequência; callback: usa o próprio mock como tx.
     prisma.$transaction.mockImplementation((arg: unknown) =>

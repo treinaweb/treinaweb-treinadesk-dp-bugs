@@ -6,8 +6,8 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 
 describe('JwtAuthGuard', () => {
-  const jwtService = { verifyAsync: jest.fn() };
-  const reflector = { getAllAndOverride: jest.fn() };
+  const jwtService = { verifyAsync: vi.fn() };
+  const reflector = { getAllAndOverride: vi.fn() };
   let guard: JwtAuthGuard;
 
   function contextWith(headers: Record<string, string>) {
@@ -23,7 +23,7 @@ describe('JwtAuthGuard', () => {
   }
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     reflector.getAllAndOverride.mockReturnValue(false);
     guard = new JwtAuthGuard(
       jwtService as unknown as JwtService,

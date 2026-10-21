@@ -45,4 +45,4 @@ npm test               # unitários (src/**/*.spec.ts)
 npm run test:e2e       # integração (test/*.e2e-spec.ts), contra o banco do .env.test
 ```
 
-O `test:e2e` aplica as migrations no banco de testes e roda o Jest com `--runInBand`. Cada suíte limpa as tabelas que usa, então o banco de testes não deve ser o mesmo do desenvolvimento.
+Os testes usam Vitest (`vitest.config.ts` e `vitest.config.e2e.ts`). O `test:e2e` aplica as migrations no banco de testes e roda um arquivo por vez. Cada suíte limpa as tabelas que usa, então o banco de testes não deve ser o mesmo do desenvolvimento.

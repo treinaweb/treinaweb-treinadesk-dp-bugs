@@ -15,14 +15,14 @@ import { CommentsService } from './comments.service.js';
 describe('CommentsService', () => {
   let service: CommentsService;
 
-  const tickets = { findOne: jest.fn() };
+  const tickets = { findOne: vi.fn() };
   const tx = {
-    comment: { create: jest.fn() },
-    ticket: { updateMany: jest.fn() },
+    comment: { create: vi.fn() },
+    ticket: { updateMany: vi.fn() },
   };
   const prisma = {
-    comment: { findMany: jest.fn(), count: jest.fn() },
-    $transaction: jest.fn(),
+    comment: { findMany: vi.fn(), count: vi.fn() },
+    $transaction: vi.fn(),
   };
 
   const ticketId = 't0000000-0000-4000-8000-000000000000';
@@ -84,7 +84,7 @@ describe('CommentsService', () => {
   const notFound = new NotFoundException('Ticket não encontrado');
 
   beforeEach(async () => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     prisma.$transaction.mockImplementation((arg: unknown) =>
       typeof arg === 'function'
         ? (arg as (client: typeof tx) => Promise<unknown>)(tx)

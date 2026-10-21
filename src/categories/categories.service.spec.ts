@@ -7,7 +7,7 @@ import { CategoriesService } from './categories.service.js';
 describe('CategoriesService', () => {
   let service: CategoriesService;
   const prisma = {
-    category: { findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
+    category: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
   };
 
   const knownError = (code: string) =>
@@ -19,7 +19,7 @@ describe('CategoriesService', () => {
   const id = 'c0000000-0000-4000-8000-000000000000';
 
   beforeEach(async () => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
 
     const moduleRef = await Test.createTestingModule({
       providers: [
