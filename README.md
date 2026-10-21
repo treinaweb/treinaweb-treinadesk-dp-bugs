@@ -43,6 +43,7 @@ Os ids são fixos: usuários `a0000000-0000-4000-8000-00000000000N` (Ana 1, Brun
 ```bash
 npm test               # unitários (src/**/*.spec.ts)
 npm run test:e2e       # integração (test/*.e2e-spec.ts), contra o banco do .env.test
+npm run test:mutation  # teste de mutação (Stryker) do TicketsService; relatório em reports/mutation/
 ```
 
-Os testes usam Vitest (`vitest.config.ts` e `vitest.config.e2e.ts`). O `test:e2e` aplica as migrations no banco de testes e roda um arquivo por vez. Cada suíte limpa as tabelas que usa, então o banco de testes não deve ser o mesmo do desenvolvimento.
+Os testes usam Vitest 4 (`vitest.config.ts` e `vitest.config.e2e.ts`). O Vitest 5 ainda não funciona com o runner do Stryker 10: os mutantes não são ativados e todos aparecem como sobreviventes. O `test:e2e` aplica as migrations no banco de testes e roda um arquivo por vez. Cada suíte limpa as tabelas que usa, então o banco de testes não deve ser o mesmo do desenvolvimento.
