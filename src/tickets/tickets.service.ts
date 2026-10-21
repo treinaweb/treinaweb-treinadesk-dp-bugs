@@ -66,9 +66,9 @@ export class TicketsService {
       select: ticketSelect,
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
-      take: limit,
+      take: limit + 1,
     });
-    return { items, page, limit };
+    return { items, page, limit, hasNextPage: items.length > limit };
   }
 
   // Toda rota com :id passa por aqui antes de qualquer regra ou escrita.
