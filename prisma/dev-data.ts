@@ -6,218 +6,131 @@ import {
 } from '../src/generated/prisma/client.js';
 import { PasswordHasher } from '../src/users/password-hasher.js';
 
-// Dados de teste para desenvolvimento local, cobrindo as specs já implementadas.
-// Nunca rodam com NODE_ENV=production (ver prisma/seed.ts).
-// Ao concluir uma change, acrescente aqui os dados das novas specs.
+// Dados previsíveis para desenvolvimento local e para o curso de testes.
+// Nunca rodam com NODE_ENV=production (ver prisma/seed.ts). Ids e datas são
+// fixos: rodar de novo apaga tudo e recria exatamente o mesmo estado.
 
-export const DEV_PASSWORD = 'senhaSegura123';
+export const DEV_PASSWORD = 'senha123';
 
-// user-management / auth: um ou mais usuários de cada papel; clientes
-// suficientes para exercitar a paginação de GET /users (ex.: limit=2).
-const users: { name: string; email: string; role: Role }[] = [
-  { name: 'Ana', email: 'ana@teste.com', role: Role.CUSTOMER },
-  { name: 'Bruno', email: 'bruno@teste.com', role: Role.CUSTOMER },
-  { name: 'Carlos', email: 'carlos@teste.com', role: Role.CUSTOMER },
-  { name: 'Bia', email: 'bia@teste.com', role: Role.SUPPORT },
-  { name: 'Carla', email: 'carla@teste.com', role: Role.SUPPORT },
-  { name: 'Diego', email: 'diego@teste.com', role: Role.ADMIN },
-];
-
-// categories: ativas e uma inativa, para a listagem por papel.
-const categories: { name: string; active: boolean }[] = [
-  { name: 'Acesso', active: true },
-  { name: 'Financeiro', active: true },
-  { name: 'Suporte Técnico', active: true },
-  { name: 'Legado', active: false },
-];
-
-// tickets: um em cada status, de Ana e Bruno (clientes A e B), com Bia e
-// Carla (atendentes S1 e S2). Ids fixos para o upsert ser idempotente.
-const tickets: {
-  id: string;
-  title: string;
-  description: string;
-  priority: TicketPriority;
-  status: TicketStatus;
-  category: string;
-  customer: string;
-  assignee: string | null;
-}[] = [
+const users = [
   {
-    id: 'd0000000-0000-4000-8000-000000000001',
-    title: 'Cobrança duplicada',
-    description: 'Fui cobrada duas vezes na fatura de março.',
-    priority: TicketPriority.HIGH,
+    id: 'a0000000-0000-4000-8000-000000000001',
+    name: 'Ana',
+    email: 'ana@treinadesk.dev',
+    role: Role.CUSTOMER,
+  },
+  {
+    id: 'a0000000-0000-4000-8000-000000000002',
+    name: 'Bruno',
+    email: 'bruno@treinadesk.dev',
+    role: Role.CUSTOMER,
+  },
+  {
+    id: 'a0000000-0000-4000-8000-000000000003',
+    name: 'Carla',
+    email: 'carla@treinadesk.dev',
+    role: Role.SUPPORT,
+  },
+  {
+    id: 'a0000000-0000-4000-8000-000000000004',
+    name: 'Administrador',
+    email: 'admin@treinadesk.dev',
+    role: Role.ADMIN,
+  },
+] as const;
+
+const [ana, bruno, carla] = users;
+
+const categories = [
+  { id: 'c0000000-0000-4000-8000-000000000001', name: 'Acesso' },
+  { id: 'c0000000-0000-4000-8000-000000000002', name: 'Financeiro' },
+  { id: 'c0000000-0000-4000-8000-000000000003', name: 'Suporte Técnico' },
+];
+
+const PRIORITIES = [
+  TicketPriority.LOW,
+  TicketPriority.MEDIUM,
+  TicketPriority.HIGH,
+  TicketPriority.URGENT,
+];
+
+// Ticket 01 é o mais antigo; cada ticket seguinte nasce 1 minuto depois.
+const BASE_DATE = new Date('2026-10-01T09:00:00.000Z');
+const MINUTE = 60_000;
+
+const ANA_CLOSED = [5, 18];
+
+function anaTicketStatus(n: number): TicketStatus {
+  if (ANA_CLOSED.includes(n)) return TicketStatus.CLOSED;
+  return n % 3 === 0 ? TicketStatus.IN_PROGRESS : TicketStatus.OPEN;
+}
+
+function ticketId(owner: number, n: number): string {
+  return `d000000${owner}-0000-4000-8000-${String(n).padStart(12, '0')}`;
+}
+
+function buildTickets() {
+  const anaTickets = Array.from({ length: 25 }, (_, i) => {
+    const n = i + 1;
+    const status = anaTicketStatus(n);
+    const createdAt = new Date(BASE_DATE.getTime() + i * MINUTE);
+    return {
+      id: ticketId(1, n),
+      title: `Ticket ${String(n).padStart(2, '0')}`,
+      description: `Descrição do ticket ${String(n).padStart(2, '0')} da Ana.`,
+      status,
+      priority: PRIORITIES[i % PRIORITIES.length],
+      categoryId: categories[i % categories.length].id,
+      customerId: ana.id,
+      assigneeId: status === TicketStatus.OPEN ? null : carla.id,
+      createdAt,
+      closedAt: status === TicketStatus.CLOSED ? createdAt : null,
+    };
+  });
+
+  const brunoTickets = [
+    { title: 'Bruno 01: boleto não chegou', priority: TicketPriority.HIGH },
+    { title: 'Bruno 02: troca de e-mail', priority: TicketPriority.LOW },
+    { title: 'Bruno 03: erro no relatório', priority: TicketPriority.MEDIUM },
+  ].map((ticket, i) => ({
+    id: ticketId(2, i + 1),
+    title: ticket.title,
+    description: `Descrição do ticket ${String(i + 1).padStart(2, '0')} do Bruno.`,
     status: TicketStatus.OPEN,
-    category: 'Financeiro',
-    customer: 'ana@teste.com',
-    assignee: null,
-  },
-  {
-    id: 'd0000000-0000-4000-8000-000000000002',
-    title: 'Nota fiscal errada',
-    description: 'A nota fiscal de abril saiu com o CNPJ errado.',
-    priority: TicketPriority.MEDIUM,
-    status: TicketStatus.OPEN,
-    category: 'Financeiro',
-    customer: 'bruno@teste.com',
-    assignee: null,
-  },
-  {
-    id: 'd0000000-0000-4000-8000-000000000003',
-    title: 'Senha expirada',
-    description: 'Não consigo entrar no sistema depois que a senha expirou.',
-    priority: TicketPriority.URGENT,
-    status: TicketStatus.IN_PROGRESS,
-    category: 'Acesso',
-    customer: 'ana@teste.com',
-    assignee: 'bia@teste.com',
-  },
-  {
-    id: 'd0000000-0000-4000-8000-000000000004',
-    title: 'Relatório não carrega',
-    description: 'O relatório mensal fica carregando e não abre.',
-    priority: TicketPriority.MEDIUM,
-    status: TicketStatus.WAITING_CUSTOMER,
-    category: 'Suporte Técnico',
-    customer: 'bruno@teste.com',
-    assignee: 'carla@teste.com',
-  },
-  {
-    id: 'd0000000-0000-4000-8000-000000000005',
-    title: 'Erro ao exportar planilha',
-    description: 'A exportação para planilha gera um arquivo vazio.',
-    priority: TicketPriority.LOW,
-    status: TicketStatus.RESOLVED,
-    category: 'Suporte Técnico',
-    customer: 'ana@teste.com',
-    assignee: 'bia@teste.com',
-  },
-  {
-    id: 'd0000000-0000-4000-8000-000000000006',
-    title: 'Boleto vencido',
-    description: 'Preciso de um novo boleto, o anterior venceu.',
-    priority: TicketPriority.LOW,
-    status: TicketStatus.CLOSED,
-    category: 'Financeiro',
-    customer: 'bruno@teste.com',
-    assignee: 'carla@teste.com',
-  },
-];
+    priority: ticket.priority,
+    categoryId: categories[i % categories.length].id,
+    customerId: bruno.id,
+    assigneeId: null,
+    createdAt: new Date(BASE_DATE.getTime() + (30 + i) * MINUTE),
+    closedAt: null,
+  }));
 
-// comments: a conversa de "Senha expirada" (Ana e Bia, com uma nota interna
-// que Ana não pode ver) e um comentário no ticket fechado de Bruno.
-// "Relatório não carrega" fica sem comentário de Bruno para exercitar a
-// retomada de WAITING_CUSTOMER. createdAt fixo mantém a ordem da listagem.
-const comments: {
-  id: string;
-  ticketId: string;
-  author: string;
-  body: string;
-  isInternal: boolean;
-  createdAt: Date;
-}[] = [
-  {
-    id: 'e0000000-0000-4000-8000-000000000001',
-    ticketId: 'd0000000-0000-4000-8000-000000000003',
-    author: 'ana@teste.com',
-    body: 'Segue o comprovante',
-    isInternal: false,
-    createdAt: new Date('2026-09-20T10:00:00Z'),
-  },
-  {
-    id: 'e0000000-0000-4000-8000-000000000002',
-    ticketId: 'd0000000-0000-4000-8000-000000000003',
-    author: 'bia@teste.com',
-    body: 'Estamos verificando',
-    isInternal: false,
-    createdAt: new Date('2026-09-20T10:05:00Z'),
-  },
-  {
-    id: 'e0000000-0000-4000-8000-000000000003',
-    ticketId: 'd0000000-0000-4000-8000-000000000003',
-    author: 'bia@teste.com',
-    body: 'Cliente já pediu estorno antes',
-    isInternal: true,
-    createdAt: new Date('2026-09-20T10:10:00Z'),
-  },
-  {
-    id: 'e0000000-0000-4000-8000-000000000004',
-    ticketId: 'd0000000-0000-4000-8000-000000000006',
-    author: 'bruno@teste.com',
-    body: 'Obrigado, o novo boleto chegou',
-    isInternal: false,
-    createdAt: new Date('2026-09-20T11:00:00Z'),
-  },
-];
+  return [...anaTickets, ...brunoTickets];
+}
 
-/**
- * Cria ou restaura os dados de teste. Idempotente: registros já existentes
- * voltam ao estado descrito aqui (papel, senha, status da categoria, status e
- * atendente do ticket, texto e visibilidade dos comentários), para que as
- * credenciais documentadas sempre funcionem.
- */
 export async function seedDevData(
   prisma: PrismaClient,
   passwordHasher = new PasswordHasher(),
 ) {
   const passwordHash = await passwordHasher.hash(DEV_PASSWORD);
+  const tickets = buildTickets();
 
-  for (const user of users) {
-    await prisma.user.upsert({
-      where: { email: user.email },
-      update: { name: user.name, role: user.role, passwordHash },
-      create: { ...user, passwordHash },
-    });
-  }
-
-  for (const category of categories) {
-    await prisma.category.upsert({
-      where: { name: category.name },
-      update: { active: category.active },
-      create: category,
-    });
-  }
-
-  const userIds = new Map(
-    (await prisma.user.findMany({ select: { id: true, email: true } })).map(
-      (u) => [u.email, u.id],
-    ),
-  );
-  const categoryIds = new Map(
-    (await prisma.category.findMany({ select: { id: true, name: true } })).map(
-      (c) => [c.name, c.id],
-    ),
-  );
-
-  for (const { id, category, customer, assignee, ...ticket } of tickets) {
-    const data = {
-      ...ticket,
-      categoryId: categoryIds.get(category)!,
-      customerId: userIds.get(customer)!,
-      assigneeId: assignee && userIds.get(assignee)!,
-      closedAt: ticket.status === TicketStatus.CLOSED ? new Date() : null,
-    };
-    await prisma.ticket.upsert({
-      where: { id },
-      update: data,
-      create: { id, ...data },
-    });
-  }
-
-  for (const { id, author, ...comment } of comments) {
-    const data = { ...comment, authorId: userIds.get(author)! };
-    await prisma.comment.upsert({
-      where: { id },
-      update: data,
-      create: { id, ...data },
-    });
-  }
+  // As FKs de tickets são Restrict: tickets antes de categorias e usuários.
+  // comments e refresh_tokens saem em cascata.
+  await prisma.$transaction([
+    prisma.ticket.deleteMany(),
+    prisma.category.deleteMany(),
+    prisma.user.deleteMany(),
+    prisma.user.createMany({
+      data: users.map((user) => ({ ...user, passwordHash })),
+    }),
+    prisma.category.createMany({ data: categories }),
+    prisma.ticket.createMany({ data: tickets }),
+  ]);
 
   return {
     users: users.length,
     categories: categories.length,
     tickets: tickets.length,
-    comments: comments.length,
   };
 }
