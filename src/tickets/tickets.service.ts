@@ -72,15 +72,12 @@ export class TicketsService {
   }
 
   // Toda rota com :id passa por aqui antes de qualquer regra ou escrita.
-  async findOne(id: string, user: AuthenticatedUser): Promise<TicketView> {
+  async findOne(id: string, _user: AuthenticatedUser): Promise<TicketView> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
       select: ticketSelect,
     });
     if (!ticket) {
-      throw new NotFoundException('Ticket não encontrado');
-    }
-    if (user.role === Role.CUSTOMER && ticket.customer.id !== user.id) {
       throw new NotFoundException('Ticket não encontrado');
     }
     return ticket;
