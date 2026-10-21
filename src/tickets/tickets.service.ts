@@ -91,12 +91,7 @@ export class TicketsService {
     dto: UpdateTicketDto,
     user: AuthenticatedUser,
   ): Promise<TicketView> {
-    const ticket = await this.findOne(id, user);
-    if (ticket.status === TicketStatus.CLOSED) {
-      throw new UnprocessableEntityException(
-        'Ticket fechado não pode ser alterado',
-      );
-    }
+    await this.findOne(id, user);
     return this.prisma.ticket.update({
       where: { id },
       data: dto,
