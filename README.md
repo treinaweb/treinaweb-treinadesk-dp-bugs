@@ -1,5 +1,14 @@
 # Projeto Prático: Construindo APIs com NestJS e IA
 
+> [!IMPORTANT]
+> **Aluno do Direto ao Ponto "Testando e Corrigindo Bugs com IA":** esta branch (`main`) tem apenas o projeto base. Antes de começar o curso, selecione a branch [`direto-ao-ponto-testes`](https://github.com/treinaweb/treinaweb-treinadesk-dp-bugs/tree/direto-ao-ponto-testes):
+>
+> ```bash
+> git clone -b direto-ao-ponto-testes https://github.com/treinaweb/treinaweb-treinadesk-dp-bugs.git
+> # ou, se já clonou o repositório:
+> git checkout direto-ao-ponto-testes
+> ```
+
 Esse repositório contem o código-fonte produzido durante as aulas do projeto prático "TreinaDesk - API de Helpdesk com SDD" da TreinaWeb.
 
 A API também é o backend do curso de Next.js que consome APIs: rode-a localmente e construa o frontend em um projeto separado.
