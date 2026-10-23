@@ -1,5 +1,8 @@
 # TreinaDesk API: Testando e Corrigindo Bugs com IA
 
+> [!NOTE]
+> Esta é a branch do curso (`direto-ao-ponto-testes`). A `main` contém só o projeto base, sem as adaptações do curso: trabalhe sempre nesta branch.
+
 API REST de helpdesk (tickets de suporte) em NestJS 12, Prisma 7 e PostgreSQL, usada no Direto ao Ponto "Testando e Corrigindo Bugs com IA" da TreinaWeb. Ela é derivada do projeto prático "TreinaDesk - API de Helpdesk com SDD".
 
 As regras de negócio que os testes verificam estão em [`docs/regras-de-negocio.md`](docs/regras-de-negocio.md).
